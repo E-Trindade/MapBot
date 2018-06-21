@@ -1,12 +1,14 @@
+import os
+import config
+
 #grammar parsing
 def parse_sentence(user_input):                               #returns root word, triples of StanfordDependencyParser
-    import os
     from nltk.parse.stanford import StanfordDependencyParser
-    path = 'stanford-corenlp-full-2017-06-09\\'
-    path_to_jar = path + 'stanford-corenlp-3.8.0.jar'
-    path_to_models_jar = path + 'stanford-corenlp-3.8.0-models.jar'
+
+    path_to_jar = config.CORENLP_JAR_PATH
+    path_to_models_jar = config.CORENLP_MODELS_PATH
     dependency_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
-    os.environ['JAVA_HOME'] = 'C:\\ProgramData\\Oracle\\Java\\javapath'
+    # os.environ['JAVA_HOME'] = 'C:\\ProgramData\\Oracle\\Java\\javapath'
     result = dependency_parser.raw_parse(user_input)
     dep = next(result)                                                          # get next item from the iterator result
     return dep.triples(),dep.root["word"]
@@ -16,7 +18,7 @@ def classify_model():
     import numpy as np
     import pandas as pd
     from sklearn.ensemble import RandomForestClassifier
-    FNAME = 'analysis\\featuresDump.csv'
+    FNAME = os.path.join('analysis', 'featuresDump.csv')
     df = pd.read_csv(filepath_or_buffer = FNAME, )
     df.columns = df.columns[:].str.strip()                                      # Strip any leading spaces from col names
     df['class'] = df['class'].map(lambda x: x.strip())
