@@ -1,5 +1,11 @@
 import os
+import psycopg2
 import config
+
+def get_connection():
+    conn = psycopg2.connect("dbname='"+ config.database +"' user='" + config.user + "' host='" + config.host + "' password='" + config.password + "'")
+    conn.autocommit = True
+    return conn
 
 #grammar parsing
 def parse_sentence(user_input):                               #returns root word, triples of StanfordDependencyParser
@@ -74,21 +80,18 @@ def classify_sentence(clf,user_input):
 #setup database
 def setup_database():
     import config
-    import mysql.connector
-    db = mysql.connector.connect(user=config.user,password=config.password,host=config.host,database=config.database)
+    db = get_connection()
     cur = db.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS chat_table(id INTEGER PRIMARY KEY AUTO_INCREMENT, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
-    cur.execute("CREATE TABLE IF NOT EXISTS statement_table(id INTEGER PRIMARY KEY AUTO_INCREMENT, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
-    cur.execute("CREATE TABLE IF NOT EXISTS question_table(id INTEGER PRIMARY KEY AUTO_INCREMENT, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
-    cur.execute("CREATE TABLE IF NOT EXISTS directions_table(id INTEGER PRIMARY KEY AUTO_INCREMENT, origin_location VARCHAR(100), destination_location VARCHAR(100))")
+    cur.execute("CREATE TABLE IF NOT EXISTS chat_table(id SERIAL PRIMARY KEY, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
+    cur.execute("CREATE TABLE IF NOT EXISTS statement_table(id SERIAL PRIMARY KEY, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
+    cur.execute("CREATE TABLE IF NOT EXISTS question_table(id SERIAL PRIMARY KEY, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
+    cur.execute("CREATE TABLE IF NOT EXISTS directions_table(id SERIAL PRIMARY KEY, origin_location VARCHAR(100), destination_location VARCHAR(100))")
 
 #add classified sentences to database
 def add_to_database(classification,subject,root,verb,H):
     import config
-    import mysql.connector
-    db = mysql.connector.connect(user=config.user,password=config.password,host=config.host,database=config.database)
+    db = get_connection()
     cur = db.cursor()
-    cur = db.cursor(buffered=True)
     if classification == 'C':
         cur.execute("INSERT INTO chat_table(root_word,verb,sentence) VALUES (%s,%s,%s)",(str(root),str(verb),H))
         db.commit()
@@ -118,10 +121,9 @@ def add_to_database(classification,subject,root,verb,H):
 #get a random chat response
 def get_chat_response():
     import config
-    import mysql.connector
-    db = mysql.connector.connect(user=config.user,password=config.password,host=config.host,database=config.database)
+    db = get_connection()
     cur = db.cursor()
-    cur = db.cursor(buffered=True)
+    cur = db.cursor()
     cur.execute("SELECT COUNT(*) FROM chat_table")
     res = cur.fetchone()
     total_chat_records = res[0]
@@ -134,9 +136,8 @@ def get_chat_response():
 
 def get_question_response(subject,root,verb):
     import config
-    import mysql.connector
-    db = mysql.connector.connect(user=config.user,password=config.password,host=config.host,database=config.database)
-    cur = db.cursor(buffered=True)
+    db = get_connection()
+    cur = db.cursor()
     if str(subject) == '[]':
         cur.execute('SELECT verb FROM statement_table')
         res = cur.fetchall()
@@ -184,18 +185,16 @@ def get_question_response(subject,root,verb):
             return B,1
 
 def add_learnt_statement_to_database(subject,root,verb):
-    import config
-    import mysql.connector
-    db = mysql.connector.connect(user=config.user,password=config.password,host=config.host,database=config.database)
+    db = get_connection()
+
     cur = db.cursor()
     cur.execute("INSERT INTO statement_table(subject,root_word,verb) VALUES (%s,%s,%s)",(str(subject),str(root),str(verb)))
     db.commit()
 
 def learn_question_response(H):
     import config
-    import mysql.connector
-    db = mysql.connector.connect(user=config.user,password=config.password,host=config.host,database=config.database)
-    cur = db.cursor(buffered=True)
+    db = get_connection()
+    cur = db.cursor()
     cur.execute("SELECT id FROM statement_table ORDER BY id DESC")
     res = cur.fetchone()
     last_id = res[0]
