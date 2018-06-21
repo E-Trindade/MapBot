@@ -1,11 +1,6 @@
 import os
-import psycopg2
 import config
-
-def get_connection():
-    conn = psycopg2.connect("dbname='"+ config.database +"' user='" + config.user + "' host='" + config.host + "' password='" + config.password + "'")
-    conn.autocommit = True
-    return conn
+import database
 
 #grammar parsing
 def parse_sentence(user_input):                               #returns root word, triples of StanfordDependencyParser
@@ -77,20 +72,9 @@ def classify_sentence(clf,user_input):
     predict = clf.predict([myFeatures])
     return predict[0].strip()
 
-#setup database
-def setup_database():
-    import config
-    db = get_connection()
-    cur = db.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS chat_table(id SERIAL PRIMARY KEY, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
-    cur.execute("CREATE TABLE IF NOT EXISTS statement_table(id SERIAL PRIMARY KEY, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
-    cur.execute("CREATE TABLE IF NOT EXISTS question_table(id SERIAL PRIMARY KEY, root_word VARCHAR(40), subject VARCHAR(40), verb VARCHAR(40), sentence VARCHAR(200))")
-    cur.execute("CREATE TABLE IF NOT EXISTS directions_table(id SERIAL PRIMARY KEY, origin_location VARCHAR(100), destination_location VARCHAR(100))")
-
 #add classified sentences to database
 def add_to_database(classification,subject,root,verb,H):
-    import config
-    db = get_connection()
+    db = database.get_connection()
     cur = db.cursor()
     if classification == 'C':
         cur.execute("INSERT INTO chat_table(root_word,verb,sentence) VALUES (%s,%s,%s)",(str(root),str(verb),H))
@@ -120,8 +104,7 @@ def add_to_database(classification,subject,root,verb,H):
 
 #get a random chat response
 def get_chat_response():
-    import config
-    db = get_connection()
+    db = database.get_connection()
     cur = db.cursor()
     cur = db.cursor()
     cur.execute("SELECT COUNT(*) FROM chat_table")
@@ -135,8 +118,7 @@ def get_chat_response():
     return B
 
 def get_question_response(subject,root,verb):
-    import config
-    db = get_connection()
+    db = database.get_connection()
     cur = db.cursor()
     if str(subject) == '[]':
         cur.execute('SELECT verb FROM statement_table')
@@ -163,17 +145,17 @@ def get_question_response(subject,root,verb):
                 found = 1
                 break
         if found == 1:
-            cur.execute('SELECT verb FROM statement_table WHERE subject="%s"' % (str(subject)))
+            cur.execute("SELECT verb FROM statement_table WHERE subject='%s'" % (str(subject).replace("'", "''")))
             res = cur.fetchone()
             checkVerb = res[0]                                                  #checkVerb is a string while verb is a list. checkVerb ['verb']
             if checkVerb == '[]':
-                cur.execute('SELECT sentence FROM statement_table WHERE subject="%s"' % (str(subject)))
+                cur.execute("SELECT sentence FROM statement_table WHERE subject='%s'" % (str(subject).replace("'", "''")))
                 res = cur.fetchone()
                 B = res[0]
                 return B,0
             else:
                 if checkVerb[2:-2] == verb[0]:
-                    cur.execute('SELECT sentence FROM statement_table WHERE subject="%s"' % (str(subject)))
+                    cur.execute("SELECT sentence FROM statement_table WHERE subject='%s'" % (str(subject).replace("'", "''")))
                     res = cur.fetchone()
                     B = res[0]
                     return B,0
@@ -185,15 +167,14 @@ def get_question_response(subject,root,verb):
             return B,1
 
 def add_learnt_statement_to_database(subject,root,verb):
-    db = get_connection()
+    db = database.get_connection()
 
     cur = db.cursor()
     cur.execute("INSERT INTO statement_table(subject,root_word,verb) VALUES (%s,%s,%s)",(str(subject),str(root),str(verb)))
     db.commit()
 
 def learn_question_response(H):
-    import config
-    db = get_connection()
+    db = database.get_connection()
     cur = db.cursor()
     cur.execute("SELECT id FROM statement_table ORDER BY id DESC")
     res = cur.fetchone()
