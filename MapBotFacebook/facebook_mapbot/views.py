@@ -11,7 +11,7 @@ import config
 global learn_response
 clf, learn_response = setup()                                                                   #classification model and database setup
 
-class mapbotView(generic.View):
+class mapbotFacebookView(generic.View):
 
     def get(self, request, **kwargs):
         if self.request.GET['hub.verify_token'] == str(config.verification_token):
@@ -45,3 +45,17 @@ def post_facebook_message(fbid, received_message):
     response_msg = json.dumps({"recipient":{"id":fbid}, "message":{"text":send_message}})
     status = requests.post(post_message_url, headers={"Content-Type": "application/json"},data=response_msg)
     print(status.json())
+
+class mapbotAPIView(generic.View):
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return generic.View.dispatch(self, request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        body_payload = json.loads(self.request.body.decode('utf-8'))
+        received_message = body_payload.get('message')
+        print('Received Message:', received_message)
+        global learn_response
+        send_message, learn_response = message_to_bot(received_message, clf, learn_response)                         #send received message to bot and retrieve appropriate response
+        return HttpResponse(json.dumps({"message": send_message}), content_type="application/json")
