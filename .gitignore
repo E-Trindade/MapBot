@@ -105,3 +105,4 @@ ENV/
 
 #configuration file
 config.py
+MapBotFacebook/db.sqlite3
