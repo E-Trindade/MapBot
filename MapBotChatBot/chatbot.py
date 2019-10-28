@@ -14,7 +14,7 @@ while True:
     print('Mapbot: '+B)
     H = input("You: ")
     if H == "":                                                                 #empty input
-        B = "Bye! I'll miss you!"
+        B = "Adeus, Otario"
         print('Mapbot: '+B)
         break                                                                   #exit loop
     #grammar parsing
